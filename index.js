@@ -12,7 +12,22 @@ const advertisementCron = require('./cron/advertisementCron.js');
 const userRoutes = require('./routes/userRoutes.js');
 const companyRoutes = require('./routes/companyRoutes.js')
 
+const path = require('path');
+const fs = require('fs');
+const { fileURLToPath } = require('url');
+
+// Get the current directory in an ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
+
+// Ensure the 'temp' directory exists
+const tempDir = path.join(__dirname, 'temp');
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir);
+}
+
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -29,6 +44,13 @@ app.use(cors({
     credentials: true
 }));
 app.use(cookieParser());
+
+app.use(
+  fileUpload({
+    useTempFiles: true,
+    tempFileDir: "/temp/", 
+  })
+);
 
 // Database Connection
 connectToDB();
