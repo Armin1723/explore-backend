@@ -1,8 +1,8 @@
 const router = require("express").Router();
-const multer = require("multer");
-const storage = multer.memoryStorage();
+// const multer = require("multer");
+// const storage = multer.memoryStorage();
 
-const upload = multer({ storage });
+// const upload = multer({ storage });
 
 const {
   loginUser,
@@ -26,7 +26,7 @@ const userRoutes = (io) => {
   router.post("/login", loginUser);
   router.post(
     "/register",
-    upload.fields([{ name: "profilePic" }]),
+    // upload.fields([{ name: "profilePic" }]),
     (req,res) => registerUser(req,res,io)
   );
   router.get("/verify", verifyUser);
@@ -40,7 +40,7 @@ const userRoutes = (io) => {
   router.post(
     "/edit-profile",
     isLoggedIn,
-    upload.fields([{ name: "profilePic" }]),
+    // upload.fields([{ name: "profilePic" }]),
     editUser
   );
 
