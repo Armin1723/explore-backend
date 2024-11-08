@@ -14,11 +14,9 @@ const companyRoutes = require('./routes/companyRoutes.js')
 
 const path = require('path');
 const fs = require('fs');
-const { fileURLToPath } = require('url');
 
-// Get the current directory in an ES module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = __filename || __dirname + '/' + path.basename(__filename);
+const __dirname = __dirname || path.dirname(__filename);
 
 const app = express();
 
