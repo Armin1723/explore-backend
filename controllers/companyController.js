@@ -297,6 +297,7 @@ const editCompany = async (req, res, io) => {
 const getCompanyDetails = async (req, res) => {
   try {
     let { name } = req.params;
+    const isAdmin = req.query.isAdmin === "true";
     name = name.split("-").join(" ");
 
     let company = await Company.findOne({
@@ -311,15 +312,15 @@ const getCompanyDetails = async (req, res) => {
         },
         limit: 5,
       })
-      .populate("admin", "name email phone profiePic");
+      .populate("admin", "name email phone profiePic")
+      .populate("enquiries", "status");
 
     if (!company) {
       return res
         .status(404)
         .json({ success: false, message: "Company not found" });
     }
-
-    if (company.status == "suspended") {
+    if (!isAdmin && company.status == "suspended") {
       return res
         .status(403)
         .json({ success: false, message: "This company has been suspended" });
@@ -340,12 +341,12 @@ const getCompanies = async (req, res) => {
 
     let query = { status: "active" };
 
-    if (category && category !== "all") {
+    if (category && category.toLowerCase() !== "all") {
       query.category = category.toLowerCase();
     }
 
-    if (subCategory && subCategory !== "all") {
-      query.subCategory = subCategory.toLowerCase();
+    if (subCategory && subCategory.toLowerCase() !== "all") {
+      query.subCategory = { $in: [subCategory.toLowerCase()] };
     }
 
     let sortQuery = { rating: -1 };
@@ -460,7 +461,12 @@ const searchCompanies = async (req, res) => {
           ],
         },
         { status: "active" },
-        ...(category && category !== "all" ? [{ category: category.toLowerCase() }] : []),...(category && category !== "all" ? [{ category: category.toLowerCase() }] : []),
+        ...(category && category !== "all"
+          ? [{ category: category.toLowerCase() }]
+          : []),
+        ...(category && category !== "all"
+          ? [{ category: category.toLowerCase() }]
+          : []),
       ],
     })
       .sort(sortQuery)
@@ -476,7 +482,9 @@ const searchCompanies = async (req, res) => {
           ],
         },
         { status: "active" },
-        ...(category && category !== "all" ? [{ category: category.toLowerCase() }] : []),
+        ...(category && category !== "all"
+          ? [{ category: category.toLowerCase() }]
+          : []),
       ],
     });
 
@@ -487,6 +495,45 @@ const searchCompanies = async (req, res) => {
       query,
       pages: Math.ceil(totalCompanies / 10),
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+//Trending Companies
+const getTrendingCompanies = async (req, res) => {
+  try {
+    const companies = await Company.find({ status: "active" })
+      .select("name description gallery rating")
+      .sort({ rating: -1 })
+      .limit(10);
+
+    res.status(200).json({ success: true, companies });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+//Similar Companies
+const getSimilarCompanies = async (req, res) => {
+  try {
+    const { category } = req.query;
+    if(!category) category = "all";
+
+    const companies = await Company.find({ status: "active" , category: category})
+      .select("name description gallery rating")
+      .sort({ rating: -1 })
+      .limit(10);
+
+      if(companies.length < 4){
+        const remainingCompanies = await Company.find({ status: "active" , category: { $ne: category}})
+        .select("name description gallery rating")
+        .sort({ rating: -1 })
+        .limit(4 - companies.length);
+        companies.push(...remainingCompanies);
+      }
+
+    res.status(200).json({ success: true, companies });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -507,10 +554,11 @@ const addReview = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Review is required" });
     }
-    const company = await Company.findOne({ name: companyName }).populate({
-      path: "reviews",
-      select: "user",
-    });
+
+    let company = await Company.findOne({
+      name: { $regex: new RegExp(companyName, "i") },
+    }).populate("reviews");
+
     if (!company) {
       return res
         .status(404)
@@ -548,9 +596,26 @@ const addReview = async (req, res) => {
     }
 
     await company.save();
+
+    const updatedCompany = await Company.findOne({ name: companyName })
+      .populate({
+        path: "reviews",
+        select: "rating comment user createdAt flags",
+        populate: {
+          path: "user",
+          select: "name profilePic",
+        },
+        limit: 5,
+      })
+      .populate("admin", "name email phone profiePic");
+
     res
       .status(201)
-      .json({ success: true, message: "Review added successfully", company });
+      .json({
+        success: true,
+        message: "Review added successfully",
+        company: updatedCompany,
+      });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -560,9 +625,9 @@ const addReview = async (req, res) => {
 const getReviews = async (req, res) => {
   try {
     const { companyName } = req.body;
-    let { page } = req.query;
+    let { skip } = req.query;
 
-    if (!page) page = 1;
+    if (!skip) skip = 0;
 
     if (!companyName) {
       return res
@@ -579,8 +644,8 @@ const getReviews = async (req, res) => {
         path: "user",
         select: "name profilePic",
       },
-      limit: 20,
-      skip: (page - 1) * 20,
+      limit: 5,
+      skip: skip,
       sortBy: { createdAt: -1 },
     });
 
@@ -591,9 +656,27 @@ const getReviews = async (req, res) => {
     res.status(200).json({
       success: true,
       reviews: company.reviews,
-      page,
-      totalPages: Math.ceil(totalReviews / 20),
+      page : skip/5 + 1,
+      totalPages: Math.ceil(totalReviews / 5),
+      hasMore: totalReviews > skip + 5,
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+//Fetch a single review by id
+const getReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const review = await Review.findById(id).populate("user", "name profilePic");
+    if (!review) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Review not found" });
+    }
+    res.status(200).json({ success: true, review });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -642,7 +725,10 @@ module.exports = {
   getCompanies,
   getCompaniesBySubCategory,
   searchCompanies,
+  getTrendingCompanies,
+  getSimilarCompanies,
   addReview,
   getReviews,
+  getReview,
   flagReview,
 };

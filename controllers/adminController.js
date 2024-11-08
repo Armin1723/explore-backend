@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Company = require("../models/companyModel");
 const Review = require("../models/reviewModel");
+const Category = require("../models/categoryModel");
 const { sendMail } = require("../helpers");
 
 //Login as admin
@@ -81,6 +82,23 @@ const logoutAdmin = async (req, res) => {
   }
 };
 
+//Get Admin Stats
+const getAdminStats = async (req, res) => {
+  try {
+    const users = await User.countDocuments({ role: "user" });
+    const companies = await Company.countDocuments();
+    const categories = await Category.countDocuments();
+    const data = [
+      {id: 0, name: 'users', value: users},
+      {id: 1, name: 'companies', value: companies},
+      {id: 2, name: 'categories', value: categories}
+    ]
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 //Get all users with pagination
 const getUsers = async (req, res) => {
   try {
@@ -117,14 +135,13 @@ const getCompanies = async (req, res) => {
 
     let query = { status: "active" };
 
-    if (category && category !== "all") {
+    if (category && category.toLowerCase() !== "all") {
       query.category = category.toLowerCase();
     }
 
-    if (subCategory && subCategory !== "all") {
-      query.subCategory = subCategory.toLowerCase();
+    if (subCategory && subCategory.toLowerCase() !== "all") {
+      query.subCategory = { $in: [subCategory.toLowerCase()] };
     }
-
     const companies = await Company.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * 10)
@@ -270,8 +287,18 @@ const deleteReview = async (req, res) => {
     company.reviews = company.reviews.filter(
       (id) => id.toString() !== reviewId
     );
+    
+    
+    // Calculate new rating
+    if (company.reviews.length > 0) {
+      company.rating =
+      (company.rating * (company.reviews.length + 1) - review.rating) /
+      company.reviews.length;
+    } else {
+      company.rating = 0;
+    }
+    
     await company.save();
-
     await review.deleteOne();
 
     res.status(200).json({ message: "Review deleted successfully" });
@@ -284,7 +311,7 @@ const deleteReview = async (req, res) => {
 const toggleSuspendUser = async (req, res) => {
   try {
     const { userId } = req.body;
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).populate("company");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -303,7 +330,11 @@ const toggleSuspendUser = async (req, res) => {
 const toggleSuspendCompany = async (req, res) => {
   try {
     const { companyId } = req.body;
-    const company = await Company.findById(companyId);
+    const company = await Company.findById(companyId).populate({
+      path: "reviews",
+      populate: { path: "user" },
+      limit: 5,
+    });
 
     if (!company) {
       return res.status(404).json({ message: "Company not found" });
@@ -434,6 +465,7 @@ const getRequests = async (req, res) => {
 module.exports = {
   loginAdmin,
   logoutAdmin,
+  getAdminStats,
   getUsers,
   getCompanies,
   getReviewsSortedByFlags,
