@@ -12,6 +12,8 @@ const advertisementCron = require('./cron/advertisementCron.js');
 const userRoutes = require('./routes/userRoutes.js');
 const companyRoutes = require('./routes/companyRoutes.js')
 
+const app = express();
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {

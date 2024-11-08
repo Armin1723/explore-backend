@@ -34,12 +34,5 @@ const sendMail = async ( email, subject, message ) => {
   }
 };
 
-let temporaryImageDirectory = ''; 
-if (process.env.ENVIRONMENT === 'dev') {
-  temporaryImageDirectory = path.join(__dirname, `../../tmp/`);
-} else {
-  temporaryImageDirectory = '/tmp/';
-}
 
-
-module.exports = { sendMail, temporaryImageDirectory };
+module.exports = { sendMail };
