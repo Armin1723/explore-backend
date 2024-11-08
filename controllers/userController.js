@@ -117,7 +117,7 @@ const registerUser = async (req, res, io) => {
           if (!cloudinaryResponse || cloudinaryResponse.error) {
             return res.status(500).json({
               success: false,
-              message: "Failed to upload profilePic to cloud.",
+              message: "Failed to upload profilePic to cloud." + cloudinaryResponse.error,  
               error: cloudinaryResponse.error,
             });
           }
