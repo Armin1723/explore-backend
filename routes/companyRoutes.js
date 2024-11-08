@@ -14,10 +14,10 @@ const {
 } = require("../controllers/companyController");
 const router = require("express").Router();
 const multer = require("multer");
-const storage = multer.memoryStorage();
+
 const { isLoggedIn } = require("../middlewares");
 
-const upload = multer({ storage });
+const upload = multer({ dest: "/temp" });
 
 const companyRoutes = (io) => {
   //Listing routes

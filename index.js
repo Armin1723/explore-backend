@@ -30,13 +30,6 @@ app.use(cors({
 }));
 app.use(cookieParser());
 
-app.use(
-  fileUpload({
-    useTempFiles: true,
-    tempFileDir: "/temp/", 
-  })
-);
-
 // Database Connection
 connectToDB();
 
