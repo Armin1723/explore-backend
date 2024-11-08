@@ -16,7 +16,7 @@ const router = require("express").Router();
 const multer = require("multer");
 const { isLoggedIn } = require("../middlewares");
 
-const upload = multer({ dest: "tmp/" });
+const upload = multer({ dest: tem });
 
 const companyRoutes = (io) => {
   //Listing routes
