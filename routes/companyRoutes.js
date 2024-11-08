@@ -17,7 +17,7 @@ const multer = require("multer");
 
 const { isLoggedIn } = require("../middlewares");
 
-const upload = multer({ dest: "/temp" });
+const upload = multer({ dest: "/tmp" });
 
 const companyRoutes = (io) => {
   //Listing routes

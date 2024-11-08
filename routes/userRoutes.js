@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const multer = require("multer");
 
-const upload = multer({ dest: "/temp" });
+const upload = multer({ dest: "/tmp" });
 
 const {
   loginUser,
