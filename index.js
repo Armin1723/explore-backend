@@ -12,21 +12,6 @@ const advertisementCron = require('./cron/advertisementCron.js');
 const userRoutes = require('./routes/userRoutes.js');
 const companyRoutes = require('./routes/companyRoutes.js')
 
-const path = require('path');
-const fs = require('fs');
-
-const __filename = __filename || __dirname + '/' + path.basename(__filename);
-const __dirname = __dirname || path.dirname(__filename);
-
-const app = express();
-
-// Ensure the 'temp' directory exists
-const tempDir = path.join(__dirname, 'temp');
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir);
-}
-
-
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
